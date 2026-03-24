@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,6 +52,10 @@ const endReference = ref<string | null>(null);
 const endPromptsNotes = ref<string[]>([]);
 const endPromptIds = ref<number[]>([]);
 const isAdmin = ref(false);
+const messageContainer = ref<HTMLElement | null>(null);
+const showSentiment = ref(true);
+const showCritique = ref(true);
+const showReference = ref(true);
 
 const canSend = computed(() => !!inputText.value.trim() && !isSending.value);
 
@@ -65,6 +69,16 @@ function pushMessage(role: ChatMessage["role"], content: string, detail?: Partia
     sentiment: detail?.sentiment,
     critique: detail?.critique,
     reference: detail?.reference,
+  });
+  scrollToBottom();
+}
+
+function scrollToBottom() {
+  nextTick(() => {
+    if (!messageContainer.value) {
+      return;
+    }
+    messageContainer.value.scrollTop = messageContainer.value.scrollHeight;
   });
 }
 
@@ -180,9 +194,6 @@ onMounted(() => {
   sseClient = createSseClient<SsePayload>(`/sessions/${sessionId.value}/stream`, undefined, {
     onMessage: (payload) => {
       updateStateFromPayload(payload);
-      if (payload.customer_msg) {
-        pushMessage("customer", payload.customer_msg);
-      }
     },
     onError: () => {
       errorMessage.value = "SSE 连接中断，请检查网络或重新进入。";
@@ -246,9 +257,38 @@ onBeforeUnmount(() => {
         <CardHeader>
           <CardTitle class="text-lg">对话内容</CardTitle>
           <CardDescription>模拟顾客的回复将通过 SSE 推送。</CardDescription>
+          <div class="mt-3 flex flex-wrap gap-4 text-xs text-slate-600">
+            <label class="flex items-center gap-2">
+              <input
+                v-model="showSentiment"
+                type="checkbox"
+                class="h-3.5 w-3.5 rounded border border-slate-300 text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/30"
+              />
+              显示情感标签
+            </label>
+            <label class="flex items-center gap-2">
+              <input
+                v-model="showCritique"
+                type="checkbox"
+                class="h-3.5 w-3.5 rounded border border-slate-300 text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/30"
+              />
+              显示专家点评
+            </label>
+            <label class="flex items-center gap-2">
+              <input
+                v-model="showReference"
+                type="checkbox"
+                class="h-3.5 w-3.5 rounded border border-slate-300 text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/30"
+              />
+              显示参考答案
+            </label>
+          </div>
         </CardHeader>
         <CardContent class="flex flex-1 flex-col gap-4">
-          <div class="flex-1 space-y-3 overflow-y-auto rounded-2xl border border-slate-200 bg-white/60 p-4">
+          <div
+            ref="messageContainer"
+            class="flex-1 space-y-3 overflow-y-auto scroll-smooth rounded-2xl border border-slate-200 bg-white/60 p-4"
+          >
             <div
               v-for="message in messages"
               :key="message.id"
@@ -260,9 +300,9 @@ onBeforeUnmount(() => {
               </p>
               <p class="text-sm leading-relaxed">{{ message.content }}</p>
               <div v-if="message.sentiment || message.critique || message.reference" class="mt-3 space-y-2 text-xs text-slate-500">
-                <p v-if="message.sentiment">情感标签：{{ message.sentiment }}</p>
-                <p v-if="message.critique">专家点评：{{ message.critique }}</p>
-                <p v-if="message.reference">参考答案：{{ message.reference }}</p>
+                <p v-if="showSentiment && message.sentiment">情感标签：{{ message.sentiment }}</p>
+                <p v-if="showCritique && message.critique">专家点评：{{ message.critique }}</p>
+                <p v-if="showReference && message.reference">参考答案：{{ message.reference }}</p>
               </div>
             </div>
             <p v-if="!messages.length" class="text-sm text-slate-500">暂无消息，请发送第一条客服应答。</p>
