@@ -17,13 +17,19 @@ type ChatMessage = {
   id: string;
   role: "user" | "customer" | "system";
   content: string;
+  round?: number;
   sentiment?: string;
   critique?: string;
   reference?: string;
 };
 
 type SsePayload = {
+  event?: "reply" | "review";
+  round?: number;
   customer_msg?: string;
+  customer_sentiment?: string;
+  expert_critique?: string;
+  reference_answer?: string;
   current_anger?: number;
   max_anger?: number;
   turn_count?: number;
@@ -66,6 +72,7 @@ function pushMessage(role: ChatMessage["role"], content: string, detail?: Partia
     id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
     role,
     content,
+    round: detail?.round,
     sentiment: detail?.sentiment,
     critique: detail?.critique,
     reference: detail?.reference,
@@ -82,7 +89,7 @@ function scrollToBottom() {
   });
 }
 
-function updateStateFromPayload(payload: SsePayload) {
+function updateProgressFromPayload(payload: SsePayload) {
   if (typeof payload.current_anger === "number") {
     currentAnger.value = payload.current_anger;
   }
@@ -92,9 +99,39 @@ function updateStateFromPayload(payload: SsePayload) {
   if (typeof payload.turn_count === "number") {
     turnCount.value = payload.turn_count;
   }
+}
+
+function updateStatusFromPayload(payload: SsePayload) {
   if (payload.status) {
     status.value = payload.status;
     handleStatusRedirect(payload.status);
+  }
+}
+
+function handleReplyEvent(payload: SsePayload) {
+  updateProgressFromPayload(payload);
+  updateStatusFromPayload(payload);
+  if (payload.customer_msg) {
+    pushMessage("customer", payload.customer_msg, {
+      round: payload.round,
+      sentiment: payload.customer_sentiment,
+    });
+  }
+}
+
+function handleReviewEvent(payload: SsePayload) {
+  updateProgressFromPayload(payload);
+  if (!payload.round) {
+    return;
+  }
+  const target = messages.value.find((message) => message.role === "customer" && message.round === payload.round);
+  if (target) {
+    if (payload.expert_critique) {
+      target.critique = payload.expert_critique;
+    }
+    if (payload.reference_answer) {
+      target.reference = payload.reference_answer;
+    }
   }
 }
 
@@ -146,18 +183,7 @@ async function handleSend() {
 
   isSending.value = true;
   try {
-    const result = await sendChatMessage(sessionId.value, content);
-    updateStateFromPayload(result);
-    if (result.round?.customer_msg) {
-      pushMessage("customer", result.round.customer_msg, {
-        sentiment: result.round.customer_sentiment,
-        critique: result.round.expert_critique,
-        reference: result.round.reference_answer,
-      });
-    }
-    if (result.status) {
-      await handleStatusRedirect(result.status);
-    }
+    await sendChatMessage(sessionId.value, content);
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "发送失败。";
   } finally {
@@ -193,7 +219,11 @@ onMounted(() => {
   }
   sseClient = createSseClient<SsePayload>(`/sessions/${sessionId.value}/stream`, undefined, {
     onMessage: (payload) => {
-      updateStateFromPayload(payload);
+      if (payload.event === "review") {
+        handleReviewEvent(payload);
+      } else {
+        handleReplyEvent(payload);
+      }
     },
     onError: () => {
       errorMessage.value = "SSE 连接中断，请检查网络或重新进入。";
@@ -304,6 +334,12 @@ onBeforeUnmount(() => {
                 <p v-if="showCritique && message.critique">专家点评：{{ message.critique }}</p>
                 <p v-if="showReference && message.reference">参考答案：{{ message.reference }}</p>
               </div>
+              <p
+                v-else-if="showCritique || showReference"
+                class="mt-3 text-xs text-slate-400"
+              >
+                评估生成中...
+              </p>
             </div>
             <p v-if="!messages.length" class="text-sm text-slate-500">暂无消息，请发送第一条客服应答。</p>
           </div>
