@@ -9,16 +9,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { createSseClient } from "@/lib/sse";
-import { getProfile, getSessionDetail, sendChatMessage, terminateSession } from "@/lib/api";
+import { getProfile, getSessionDetail, getSessions, sendChatMessage, terminateSession } from "@/lib/api";
 
 type ChatMessage = {
   id: string;
   role: "user" | "customer" | "system";
   content: string;
   round?: number;
-  sentiment?: string;
   critique?: string;
   reference?: string;
 };
@@ -27,7 +25,6 @@ type SsePayload = {
   event?: "reply" | "review";
   round?: number;
   customer_msg?: string;
-  customer_sentiment?: string;
   expert_critique?: string;
   reference_answer?: string;
   current_anger?: number;
@@ -57,9 +54,9 @@ const endSummary = ref<string | null>(null);
 const endReference = ref<string | null>(null);
 const endPromptsNotes = ref<string[]>([]);
 const endPromptIds = ref<number[]>([]);
+const latestRecordId = ref<string | null>(null);
 const isAdmin = ref(false);
 const messageContainer = ref<HTMLElement | null>(null);
-const showSentiment = ref(true);
 const showCritique = ref(true);
 const showReference = ref(true);
 
@@ -73,7 +70,6 @@ function pushMessage(role: ChatMessage["role"], content: string, detail?: Partia
     role,
     content,
     round: detail?.round,
-    sentiment: detail?.sentiment,
     critique: detail?.critique,
     reference: detail?.reference,
   });
@@ -114,7 +110,6 @@ function handleReplyEvent(payload: SsePayload) {
   if (payload.customer_msg) {
     pushMessage("customer", payload.customer_msg, {
       round: payload.round,
-      sentiment: payload.customer_sentiment,
     });
   }
 }
@@ -152,11 +147,32 @@ async function handleStatusRedirect(nextStatus: string) {
 }
 
 async function loadEndSummary() {
-  try {
-    const [profile, detail] = await Promise.all([
-      getProfile().catch(() => null),
-      getSessionDetail(sessionId.value),
-    ]);
+    try {
+      const [profile, listResult] = await Promise.all([
+        getProfile().catch(() => null),
+        getSessions({ page: 1, size: 20 }),
+      ]);
+      const resolvedId = (listResult.list ?? [])
+      .slice()
+      .sort((a, b) => {
+        const timeA = a.finished_at ? Date.parse(a.finished_at) : Number.NaN;
+        const timeB = b.finished_at ? Date.parse(b.finished_at) : Number.NaN;
+        if (!Number.isNaN(timeA) && !Number.isNaN(timeB) && timeA !== timeB) {
+          return timeB - timeA;
+        }
+        const idA = Number(a.id);
+        const idB = Number(b.id);
+        if (!Number.isNaN(idA) && !Number.isNaN(idB) && idA !== idB) {
+          return idB - idA;
+        }
+        return 0;
+      })
+      .find((item) => item.id)?.id;
+    if (!resolvedId) {
+      throw new Error("未找到最新训练记录。");
+    }
+    latestRecordId.value = resolvedId;
+    const detail = await getSessionDetail(resolvedId);
     if (profile?.role) {
       const normalized = profile.role.toLowerCase();
       isAdmin.value = normalized.includes("admin") || normalized.includes("root") || normalized.includes("manager");
@@ -238,8 +254,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="mx-auto flex min-h-dvh w-full max-w-6xl flex-col gap-6 px-6 py-10">
-    <header class="flex flex-wrap items-center justify-between gap-4">
+  <div class="mx-auto flex h-dvh w-full max-w-6xl flex-col gap-6 px-6 py-10">
+    <header class="flex flex-shrink-0 flex-wrap items-center justify-between gap-4">
       <div>
         <p class="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">训练对话</p>
         <h1 class="text-3xl font-semibold text-slate-900">实时训练面板</h1>
@@ -253,17 +269,17 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <p v-if="errorMessage" class="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+    <p v-if="errorMessage" class="flex-shrink-0 rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
       {{ errorMessage }}
     </p>
 
-    <div class="grid gap-6 lg:grid-cols-[1fr_2fr]">
-      <Card class="rounded-3xl">
-        <CardHeader>
+    <div class="grid flex-1 min-h-0 gap-6 lg:grid-cols-[1fr_2fr]">
+      <Card class="flex flex-col rounded-3xl overflow-hidden">
+        <CardHeader class="flex-shrink-0">
           <CardTitle class="text-lg">会话状态</CardTitle>
           <CardDescription>实时同步的怒气值与进度</CardDescription>
         </CardHeader>
-        <CardContent class="space-y-4">
+        <CardContent class="flex-1 overflow-y-auto space-y-4">
           <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3">
             <p class="text-xs text-slate-500">当前怒气值</p>
             <p class="text-2xl font-semibold text-slate-900">{{ currentAnger ?? "-" }}</p>
@@ -283,19 +299,11 @@ onBeforeUnmount(() => {
         </CardContent>
       </Card>
 
-      <Card class="flex flex-col rounded-3xl">
-        <CardHeader>
+      <Card class="flex flex-col rounded-3xl overflow-hidden">
+        <CardHeader class="flex-shrink-0">
           <CardTitle class="text-lg">对话内容</CardTitle>
           <CardDescription>模拟顾客的回复将通过 SSE 推送。</CardDescription>
           <div class="mt-3 flex flex-wrap gap-4 text-xs text-slate-600">
-            <label class="flex items-center gap-2">
-              <input
-                v-model="showSentiment"
-                type="checkbox"
-                class="h-3.5 w-3.5 rounded border border-slate-300 text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/30"
-              />
-              显示情感标签
-            </label>
             <label class="flex items-center gap-2">
               <input
                 v-model="showCritique"
@@ -314,7 +322,7 @@ onBeforeUnmount(() => {
             </label>
           </div>
         </CardHeader>
-        <CardContent class="flex flex-1 flex-col gap-4">
+        <CardContent class="flex flex-1 flex-col gap-4 min-h-0">
           <div
             ref="messageContainer"
             class="flex-1 space-y-3 overflow-y-auto scroll-smooth rounded-2xl border border-slate-200 bg-white/60 p-4"
@@ -329,13 +337,12 @@ onBeforeUnmount(() => {
                 {{ message.role === 'customer' ? '顾客' : '系统' }}
               </p>
               <p class="text-sm leading-relaxed">{{ message.content }}</p>
-              <div v-if="message.sentiment || message.critique || message.reference" class="mt-3 space-y-2 text-xs text-slate-500">
-                <p v-if="showSentiment && message.sentiment">情感标签：{{ message.sentiment }}</p>
+              <div v-if="message.critique || message.reference" class="mt-3 space-y-2 text-xs text-slate-500">
                 <p v-if="showCritique && message.critique">专家点评：{{ message.critique }}</p>
                 <p v-if="showReference && message.reference">参考答案：{{ message.reference }}</p>
               </div>
               <p
-                v-else-if="showCritique || showReference"
+                v-else-if="message.role === 'customer' && (showCritique || showReference)"
                 class="mt-3 text-xs text-slate-400"
               >
                 评估生成中...
@@ -344,8 +351,14 @@ onBeforeUnmount(() => {
             <p v-if="!messages.length" class="text-sm text-slate-500">暂无消息，请发送第一条客服应答。</p>
           </div>
 
-          <div class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
-            <Input v-model="inputText" placeholder="输入客服应答内容" @keyup.enter="handleSend" />
+          <div class="flex flex-shrink-0 flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+            <textarea
+              v-model="inputText"
+              rows="3"
+              class="max-h-48 w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              placeholder="输入客服应答内容（Shift + Enter 换行）"
+              @keydown.enter.exact.prevent="handleSend"
+            ></textarea>
             <div class="flex flex-wrap items-center justify-between gap-3">
               <span class="text-xs text-slate-500">按 Enter 发送，或点击按钮提交。</span>
               <Button :disabled="!canSend" @click="handleSend">
@@ -388,7 +401,7 @@ onBeforeUnmount(() => {
           </div>
           <div class="flex flex-wrap gap-3">
             <Button variant="outline" @click="router.push('/training/history')">查看训练历史</Button>
-            <Button @click="router.push(`/training/review/${sessionId}`)">进入完整复盘</Button>
+            <Button :disabled="!latestRecordId" @click="router.push(`/training/review/${latestRecordId}`)">进入完整复盘</Button>
           </div>
         </CardContent>
       </Card>
