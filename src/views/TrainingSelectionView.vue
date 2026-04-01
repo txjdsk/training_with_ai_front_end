@@ -224,7 +224,7 @@ onMounted(() => {
           </CardHeader>
           <CardContent class="flex flex-wrap items-center justify-between gap-4">
             <div class="text-sm text-slate-600">
-              已选：角色 ID {{ selectedRoleId ?? "-" }}，场景 ID {{ selectedSceneId ?? "-" }}，难度：{​{
+              已选：角色 ID {{ selectedRoleId ?? "-" }}，场景 ID {{ selectedSceneId ?? "-" }}，难度：{{
                 difficultyOptions.find((option) => option.value === difficulty)?.label ?? "-"
               }}
             </div>
