@@ -262,7 +262,6 @@ onBeforeUnmount(() => {
         <p class="mt-2 text-sm text-slate-600">会话编号：{{ sessionId }}</p>
       </div>
       <div class="flex flex-wrap gap-2">
-        <Button variant="outline" @click="handleBack">返回选择</Button>
         <Button variant="destructive" :disabled="isTerminating" @click="handleTerminate">
           {{ isTerminating ? "终止中..." : "终止训练" }}
         </Button>
@@ -302,7 +301,6 @@ onBeforeUnmount(() => {
       <Card class="flex flex-col rounded-3xl overflow-hidden">
         <CardHeader class="flex-shrink-0">
           <CardTitle class="text-lg">对话内容</CardTitle>
-          <CardDescription>模拟顾客的回复将通过 SSE 推送。</CardDescription>
           <div class="mt-3 flex flex-wrap gap-4 text-xs text-slate-600">
             <label class="flex items-center gap-2">
               <input

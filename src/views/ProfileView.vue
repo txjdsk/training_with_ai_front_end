@@ -38,7 +38,6 @@ onMounted(loadProfile);
 <template>
   <div class="mx-auto flex min-h-dvh w-full max-w-4xl flex-col gap-6 px-6 py-12">
     <header class="space-y-2">
-      <p class="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">个人中心</p>
       <h1 class="text-3xl font-semibold text-slate-900">账号信息</h1>
       <p class="text-sm text-slate-600">查看账号角色与注册时间。</p>
     </header>

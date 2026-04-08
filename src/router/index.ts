@@ -6,7 +6,6 @@ import TrainingChatView from "@/views/TrainingChatView.vue";
 import TrainingHistoryView from "@/views/TrainingHistoryView.vue";
 import TrainingReviewView from "@/views/TrainingReviewView.vue";
 import TrainingTerminationView from "@/views/TrainingTerminationView.vue";
-import AdminDialoguesView from "@/views/AdminDialoguesView.vue";
 import AdminPromptsView from "@/views/AdminPromptsView.vue";
 import AdminPromptTypesView from "@/views/AdminPromptTypesView.vue";
 import ProfileView from "@/views/ProfileView.vue";
@@ -60,7 +59,6 @@ const router = createRouter({
     { path: "/training/terminated", name: "training-terminated", component: TrainingTerminationView, meta: { requiresAuth: true } },
     { path: "/profile", name: "profile", component: ProfileView, meta: { requiresAuth: true } },
     { path: "/admin/users", name: "admin-users", component: AdminUsersView, meta: { requiresAuth: true, adminOnly: true } },
-    { path: "/admin/dialogues", name: "admin-dialogues", component: AdminDialoguesView, meta: { requiresAuth: true, adminOnly: true } },
     { path: "/admin/prompts", name: "admin-prompts", component: AdminPromptsView, meta: { requiresAuth: true, adminOnly: true } },
     { path: "/admin/prompt-types", name: "admin-prompt-types", component: AdminPromptTypesView, meta: { requiresAuth: true, adminOnly: true } },
   ],

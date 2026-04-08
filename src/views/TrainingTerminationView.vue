@@ -31,7 +31,6 @@ const description = computed(() =>
         </div>
         <div class="flex flex-wrap gap-3">
           <Button @click="router.push('/training/select')">返回选择</Button>
-          <Button variant="outline" @click="router.push('/training/history')">查看训练历史</Button>
         </div>
       </CardContent>
     </Card>

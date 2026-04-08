@@ -28,19 +28,21 @@ const errors = reactive({
   password: "",
   form: "",
 });
+const successMessage = ref("");
 
 const view = computed(() => (route.name === "register" ? "register" : "login"));
 const title = computed(() => (view.value === "login" ? "欢迎回来" : "创建账号"));
 const description = computed(() =>
   view.value === "login"
-    ? "登录后继续训练对话。"
-    : "注册新账号，开始训练。",
+    ? "有账号？直接登录"
+    : "注册新账号",
 );
 
 function resetErrors() {
   errors.username = "";
   errors.password = "";
   errors.form = "";
+  successMessage.value = "";
 }
 
 function resetForm() {
@@ -89,6 +91,7 @@ async function handleSubmit() {
       await router.push(resolveRoleTarget(profile.role));
     } else {
       await register(form.username.trim(), form.password);
+      successMessage.value = "账号创建完成，请使用新账号登录。";
       resetForm();
       await router.push("/login");
     }
@@ -117,21 +120,21 @@ function switchView(nextView: "login" | "register") {
         <div class="space-y-6">
           <p class="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Training With AI</p>
           <h1 class="text-4xl font-semibold leading-tight text-slate-900 md:text-5xl">
-            打造更稳的对话节奏，
-            <span class="text-slate-500">逐个场景打磨。</span>
+            我们的系统让<span class="text-blue-600">AI</span>成为训练伙伴<br />
+            让<span class="text-blue-600">科技</span>助力客户服务培训
           </h1>
-          <p class="text-base text-slate-600">
-            通过结构化提示词、情绪控制模型与专家反馈练习客服对话。登录继续训练，或注册新账号开始。
+          <p class="text-base leading-relaxed text-slate-600">
+            我们通过使用多智能体技术、情绪控制模型、专家反馈练习打造完美客户服务训练体验。同时低门槛的提示词修正润色体验也助你一臂之力。
           </p>
         </div>
         <div class="mt-10 grid gap-4 text-sm text-slate-600">
-          <div class="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-white px-4 py-3">
-            <span>HTTPS 接口传输</span>
-            <span class="rounded-full bg-slate-900 px-2 py-1 text-xs font-semibold text-white">启用</span>
+          <div class="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-white px-4 py-3 shadow-sm">
+            <span class="font-medium">我们也提供了更切合实际的场景</span>
+            <span class="rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white">Feature</span>
           </div>
-          <div class="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-white px-4 py-3">
-            <span>训练场景与角色选择</span>
-            <span class="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">就绪</span>
+          <div class="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-white px-4 py-3 shadow-sm">
+            <span class="font-medium">我们还设计了更智能的评估体系</span>
+            <span class="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">Feature</span>
           </div>
         </div>
       </section>
@@ -233,6 +236,12 @@ function switchView(nextView: "login" | "register") {
                 />
                 <Label for="rememberMe">记住我</Label>
               </div>
+              <p
+                v-if="successMessage"
+                class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700"
+              >
+                {{ successMessage }}
+              </p>
               <p
                 v-if="errors.form"
                 class="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"

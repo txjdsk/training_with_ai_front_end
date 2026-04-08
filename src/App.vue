@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
+import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { getProfile, logout } from "@/lib/api";
 import { clearProfileCache } from "@/router";
@@ -34,9 +35,8 @@ const navigation = computed(() => {
     return [
         ...base,
         { label: "用户管理", to: "/admin/users", key: "admin-users" },
-        { label: "对话管理", to: "/admin/dialogues", key: "admin-dialogues" },
         { label: "提示词管理", to: "/admin/prompts", key: "admin-prompts" },
-        { label: "提示词类别", to: "/admin/prompt-types", key: "admin-prompt-types" },
+        { label: "场景类别", to: "/admin/prompt-types", key: "admin-prompt-types" },
     ];
 });
 
@@ -121,4 +121,5 @@ onMounted(loadProfile);
             <RouterView />
         </div>
     </div>
+    <Toaster position="top-center" richColors />
 </template>

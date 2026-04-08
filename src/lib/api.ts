@@ -258,7 +258,7 @@ export async function getPromptTypes() {
   });
 }
 
-export async function createPromptType(payload: { id: number; name: string }) {
+export async function createPromptType(payload: { name: string }) {
   return requestJson<{ id: number; name: string }>({
     method: "POST",
     url: "/prompt-types",
