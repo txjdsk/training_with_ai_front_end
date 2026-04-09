@@ -57,8 +57,8 @@ const endPromptIds = ref<number[]>([]);
 const latestRecordId = ref<string | null>(null);
 const isAdmin = ref(false);
 const messageContainer = ref<HTMLElement | null>(null);
-const showCritique = ref(true);
-const showReference = ref(true);
+const showCritique = ref(false);
+const showReference = ref(false);
 
 const canSend = computed(() => !!inputText.value.trim() && !isSending.value);
 
@@ -254,121 +254,153 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="mx-auto flex h-dvh w-full max-w-6xl flex-col gap-6 px-6 py-10">
-    <header class="flex flex-shrink-0 flex-wrap items-center justify-between gap-4">
-      <div>
-        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">训练对话</p>
-        <h1 class="text-3xl font-semibold text-slate-900">实时训练面板</h1>
-        <p class="mt-2 text-sm text-slate-600">会话编号：{{ sessionId }}</p>
+  <div class="flex h-dvh w-full overflow-hidden bg-slate-50 text-slate-900">
+    <!-- 左侧状态栏 -->
+    <aside class="flex w-64 flex-col border-r border-slate-200 bg-white/50 backdrop-blur-sm">
+      <div class="flex flex-col gap-2 border-b border-slate-200 px-5 py-6">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">训练对话</p>
+        <h1 class="text-xl font-semibold text-slate-900">实时训练面板</h1>
+        <p class="text-xs text-slate-600 truncate" :title="sessionId">编号：{{ sessionId }}</p>
       </div>
-      <div class="flex flex-wrap gap-2">
-        <Button variant="destructive" :disabled="isTerminating" @click="handleTerminate">
+
+      <div class="flex-1 overflow-y-auto px-5 py-6 space-y-4">
+        <!-- 错误提示 -->
+        <p v-if="errorMessage" class="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          {{ errorMessage }}
+        </p>
+
+        <!-- 状态选项卡 -->
+        <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+          <p class="text-[10px] text-slate-500 uppercase tracking-wider">当前怒气值</p>
+          <p class="text-xl font-semibold text-slate-900">{{ currentAnger ?? "-" }}</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+          <p class="text-[10px] text-slate-500 uppercase tracking-wider">历史最高怒气值</p>
+          <p class="text-xl font-semibold text-slate-900">{{ maxAnger ?? "-" }}</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+          <p class="text-[10px] text-slate-500 uppercase tracking-wider">当前轮次</p>
+          <p class="text-xl font-semibold text-slate-900">{{ turnCount ?? "-" }}</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+          <p class="text-[10px] text-slate-500 uppercase tracking-wider">状态</p>
+          <p class="text-base font-semibold" :class="status === 'ongoing' ? 'text-emerald-600' : 'text-slate-900'">
+            {{ status === 'ongoing' ? '进行中' : status }}
+          </p>
+        </div>
+      </div>
+
+      <!-- 底部操作区 -->
+      <div class="border-t border-slate-200 p-4">
+        <Button variant="destructive" class="w-full rounded-xl" :disabled="isTerminating" @click="handleTerminate">
           {{ isTerminating ? "终止中..." : "终止训练" }}
         </Button>
       </div>
-    </header>
+    </aside>
 
-    <p v-if="errorMessage" class="flex-shrink-0 rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-      {{ errorMessage }}
-    </p>
-
-    <div class="grid flex-1 min-h-0 gap-6 lg:grid-cols-[1fr_2fr]">
-      <Card class="flex flex-col rounded-3xl overflow-hidden">
-        <CardHeader class="flex-shrink-0">
-          <CardTitle class="text-lg">会话状态</CardTitle>
-          <CardDescription>实时同步的怒气值与进度</CardDescription>
-        </CardHeader>
-        <CardContent class="flex-1 overflow-y-auto space-y-4">
-          <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-            <p class="text-xs text-slate-500">当前怒气值</p>
-            <p class="text-2xl font-semibold text-slate-900">{{ currentAnger ?? "-" }}</p>
-          </div>
-          <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-            <p class="text-xs text-slate-500">历史最高怒气值</p>
-            <p class="text-2xl font-semibold text-slate-900">{{ maxAnger ?? "-" }}</p>
-          </div>
-          <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-            <p class="text-xs text-slate-500">当前轮次</p>
-            <p class="text-2xl font-semibold text-slate-900">{{ turnCount ?? "-" }}</p>
-          </div>
-          <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-            <p class="text-xs text-slate-500">状态</p>
-            <p class="text-lg font-semibold text-slate-900">{{ status }}</p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card class="flex flex-col rounded-3xl overflow-hidden">
-        <CardHeader class="flex-shrink-0">
-          <CardTitle class="text-lg">对话内容</CardTitle>
-          <div class="mt-3 flex flex-wrap gap-4 text-xs text-slate-600">
-            <label class="flex items-center gap-2">
-              <input
-                v-model="showCritique"
-                type="checkbox"
-                class="h-3.5 w-3.5 rounded border border-slate-300 text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/30"
-              />
-              显示专家点评
-            </label>
-            <label class="flex items-center gap-2">
-              <input
-                v-model="showReference"
-                type="checkbox"
-                class="h-3.5 w-3.5 rounded border border-slate-300 text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/30"
-              />
-              显示参考答案
-            </label>
-          </div>
-        </CardHeader>
-        <CardContent class="flex flex-1 flex-col gap-4 min-h-0">
-          <div
-            ref="messageContainer"
-            class="flex-1 space-y-3 overflow-y-auto scroll-smooth rounded-2xl border border-slate-200 bg-white/60 p-4"
+    <!-- 右侧主对话区 -->
+    <main class="flex flex-1 flex-col min-w-0 bg-white relative">
+      <!-- 顶栏开关 -->
+      <header class="flex h-14 shrink-0 items-center justify-end gap-5 border-b border-slate-100 bg-white/80 px-6 backdrop-blur-sm z-10">
+        <label class="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700 hover:text-slate-900 transition-colors" @click.prevent="showCritique = !showCritique">
+          <button
+            type="button"
+            role="switch"
+            :aria-checked="showCritique"
+            :class="showCritique ? 'bg-slate-900' : 'bg-slate-200'"
+            class="relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
           >
-            <div
-              v-for="message in messages"
-              :key="message.id"
-              class="rounded-2xl px-4 py-3"
-              :class="message.role === 'user' ? 'bg-slate-900 text-white ml-auto' : message.role === 'customer' ? 'bg-white text-slate-900' : 'bg-slate-100 text-slate-700'"
-            >
-              <p class="text-xs uppercase tracking-[0.2em] text-slate-400" v-if="message.role !== 'user'">
-                {{ message.role === 'customer' ? '顾客' : '系统' }}
-              </p>
-              <p class="text-sm leading-relaxed">{{ message.content }}</p>
-              <div v-if="message.critique || message.reference" class="mt-3 space-y-2 text-xs text-slate-500">
-                <p v-if="showCritique && message.critique">专家点评：{{ message.critique }}</p>
-                <p v-if="showReference && message.reference">参考答案：{{ message.reference }}</p>
-              </div>
-              <p
-                v-else-if="message.role === 'customer' && (showCritique || showReference)"
-                class="mt-3 text-xs text-slate-400"
-              >
-                评估生成中...
-              </p>
-            </div>
-            <p v-if="!messages.length" class="text-sm text-slate-500">暂无消息，请发送第一条客服应答。</p>
-          </div>
+            <span
+              aria-hidden="true"
+              :class="showCritique ? 'translate-x-3' : 'translate-x-0'"
+              class="pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+            />
+          </button>
+          专家点评
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700 hover:text-slate-900 transition-colors" @click.prevent="showReference = !showReference">
+          <button
+            type="button"
+            role="switch"
+            :aria-checked="showReference"
+            :class="showReference ? 'bg-slate-900' : 'bg-slate-200'"
+            class="relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+          >
+            <span
+              aria-hidden="true"
+              :class="showReference ? 'translate-x-3' : 'translate-x-0'"
+              class="pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+            />
+          </button>
+          参考答案
+        </label>
+      </header>
 
-          <div class="flex flex-shrink-0 flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+      <!-- 消息列表区 -->
+      <div ref="messageContainer" class="flex-1 overflow-y-auto scroll-smooth px-4 sm:px-10 lg:px-24 py-8 space-y-6">
+        <div
+          v-for="message in messages"
+          :key="message.id"
+          class="flex flex-col"
+          :class="message.role === 'user' ? 'items-end' : 'items-start'"
+        >
+          <div
+            class="max-w-[85%] rounded-2xl px-5 py-3.5 shadow-sm"
+            :class="message.role === 'user' ? 'bg-slate-900 text-white rounded-tr-sm' : message.role === 'customer' ? 'bg-white border border-slate-200 text-slate-900 rounded-tl-sm' : 'bg-slate-100 text-slate-700 rounded-tl-sm'"
+          >
+            <p class="text-[10px] font-semibold uppercase tracking-wider mb-1 opacity-70" v-if="message.role !== 'user'">
+              {{ message.role === 'customer' ? '顾客' : '系统' }}
+            </p>
+            <p class="text-[15px] leading-relaxed whitespace-pre-wrap word-break">{{ message.content }}</p>
+          </div>
+          
+          <!-- 专家点评与参考答案气泡 -->
+          <div v-if="(showCritique && message.critique) || (showReference && message.reference)" class="mt-2 max-w-[85%] space-y-2">
+            <div v-if="showCritique && message.critique" class="rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-3 text-sm text-blue-900">
+              <span class="font-semibold text-blue-700">专家点评：</span>{{ message.critique }}
+            </div>
+            <div v-if="showReference && message.reference" class="rounded-xl border border-emerald-100 bg-emerald-50/50 px-4 py-3 text-sm text-emerald-900">
+              <span class="font-semibold text-emerald-700">参考答案：</span>{{ message.reference }}
+            </div>
+          </div>
+          <p
+            v-else-if="message.role === 'customer' && (showCritique || showReference)"
+            class="mt-2 text-xs text-slate-400 pl-2"
+          >
+            评估生成中...
+          </p>
+        </div>
+        
+        <div v-if="!messages.length" class="flex h-full items-center justify-center">
+          <p class="text-sm text-slate-400">暂无对话记录，请在下方输入框发送您的第一条应答。</p>
+        </div>
+      </div>
+
+      <!-- 底部输入区 -->
+      <div class="flex-shrink-0 bg-white px-4 sm:px-10 lg:px-24 py-4 border-t border-slate-100">
+        <div class="mx-auto w-full max-w-4xl relative">
+          <div class="flex items-end gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 px-3 py-2 shadow-sm transition-all focus-within:bg-white focus-within:border-slate-300 focus-within:ring-4 focus-within:ring-slate-900/5 hover:border-slate-300">
             <textarea
               v-model="inputText"
-              rows="3"
-              class="max-h-48 w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-              placeholder="输入客服应答内容（Shift + Enter 换行）"
+              rows="1"
+              class="max-h-48 min-h-[44px] w-full resize-none bg-transparent py-2.5 px-1 text-[15px] outline-none placeholder:text-slate-400"
+              placeholder="输入客服应答内容"
               @keydown.enter.exact.prevent="handleSend"
             ></textarea>
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <span class="text-xs text-slate-500">按 Enter 发送，或点击按钮提交。</span>
-              <Button :disabled="!canSend" @click="handleSend">
-                {{ isSending ? "发送中..." : "发送" }}
-              </Button>
-            </div>
+            <Button 
+              :disabled="!canSend" 
+              @click="handleSend" 
+              class="mb-1 shrink-0 rounded-xl h-9 px-4 transition-transform active:scale-95"
+            >
+              {{ isSending ? "发送中..." : "发送" }}
+            </Button>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+          <p class="mt-2 text-center text-[11px] text-slate-400">按 Enter 发送，Shift + Enter 换行，或点击发送按钮提交</p>
+        </div>
+      </div>
+    </main>
 
-    <div v-if="showEndModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-6">
+    <div v-if="showEndModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-6 backdrop-blur-sm">
       <Card class="w-full max-w-2xl rounded-3xl">
         <CardHeader>
           <CardTitle class="text-2xl">训练已结束</CardTitle>
