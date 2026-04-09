@@ -14,6 +14,7 @@ type DialogueItem = {
   anger_delta: number;
   anger_after: number;
   expert_critique: string;
+  polish_reply: string;
   reference_answer: string;
 };
 
@@ -76,8 +77,7 @@ onMounted(() => {
         <p class="mt-2 text-sm text-slate-600">记录编号：{{ sessionId }}</p>
       </div>
       <div class="flex flex-wrap gap-2">
-        <Button variant="outline" @click="router.push('/training/history')">返回列表</Button>
-        <Button @click="router.push('/training/select')">再开一场</Button>
+        <Button @click="router.push('/training/history')">返回列表</Button>
       </div>
     </header>
 
@@ -140,10 +140,14 @@ onMounted(() => {
               <p class="text-sm text-slate-900">{{ item.customer_msg }}</p>
             </div>
           </div>
-          <div class="mt-3 grid gap-3 md:grid-cols-2">
+          <div class="mt-3 grid gap-3 md:grid-cols-3">
             <div class="rounded-2xl border border-slate-100 bg-white px-3 py-2">
               <p class="text-xs text-slate-500">专家点评</p>
               <p class="text-sm text-slate-900">{{ item.expert_critique }}</p>
+            </div>
+            <div class="rounded-2xl border border-slate-100 bg-white px-3 py-2">
+              <p class="text-xs text-slate-500">斧正回复</p>
+              <p class="text-sm text-slate-900">{{ item.polish_reply }}</p>
             </div>
             <div class="rounded-2xl border border-slate-100 bg-white px-3 py-2">
               <p class="text-xs text-slate-500">参考答案</p>

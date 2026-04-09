@@ -253,9 +253,6 @@ function switchView(nextView: "login" | "register") {
               </Button>
             </form>
           </CardContent>
-          <CardFooter class="text-xs text-slate-500">
-            接口使用 HTTPS。需要时在 `.env` 中配置 `VITE_API_BASE_URL`。
-          </CardFooter>
         </Card>
       </section>
     </div>

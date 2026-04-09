@@ -141,6 +141,7 @@ export async function sendChatMessage(sessionId: string, message: string) {
       anger_delta: number;
       anger_after: number;
       expert_critique: string;
+      polish_reply: string;
       reference_answer: string;
     };
     status: string;
@@ -230,6 +231,7 @@ export async function getSessionDetail(sessionId: string) {
       anger_delta: number;
       anger_after: number;
       expert_critique: string;
+      polish_reply: string;
       reference_answer: string;
     }>;
     finished_at?: string;

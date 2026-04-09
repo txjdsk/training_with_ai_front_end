@@ -18,14 +18,17 @@ type ChatMessage = {
   content: string;
   round?: number;
   critique?: string;
+  polish?: string;
   reference?: string;
 };
 
 type SsePayload = {
-  event?: "reply" | "review";
+  event?: "reply" | "review" | "preview";
   round?: number;
+  preview?: string;
   customer_msg?: string;
   expert_critique?: string;
+  polish_reply?: string;
   reference_answer?: string;
   current_anger?: number;
   max_anger?: number;
@@ -58,6 +61,7 @@ const latestRecordId = ref<string | null>(null);
 const isAdmin = ref(false);
 const messageContainer = ref<HTMLElement | null>(null);
 const showCritique = ref(false);
+const showPolish = ref(false);
 const showReference = ref(false);
 
 const canSend = computed(() => !!inputText.value.trim() && !isSending.value);
@@ -71,6 +75,7 @@ function pushMessage(role: ChatMessage["role"], content: string, detail?: Partia
     content,
     round: detail?.round,
     critique: detail?.critique,
+    polish: detail?.polish,
     reference: detail?.reference,
   });
   scrollToBottom();
@@ -124,10 +129,21 @@ function handleReviewEvent(payload: SsePayload) {
     if (payload.expert_critique) {
       target.critique = payload.expert_critique;
     }
+    if (payload.polish_reply) {
+      target.polish = payload.polish_reply;
+    }
     if (payload.reference_answer) {
       target.reference = payload.reference_answer;
     }
   }
+}
+
+function handlePreviewEvent(payload: SsePayload) {
+  updateProgressFromPayload(payload);
+  if (!payload.preview) {
+    return;
+  }
+  pushMessage("system", `前情回顾:\n${payload.preview}`);
 }
 
 async function handleStatusRedirect(nextStatus: string) {
@@ -237,6 +253,8 @@ onMounted(() => {
     onMessage: (payload) => {
       if (payload.event === "review") {
         handleReviewEvent(payload);
+      } else if (payload.event === "preview") {
+        handlePreviewEvent(payload);
       } else {
         handleReplyEvent(payload);
       }
@@ -318,6 +336,22 @@ onBeforeUnmount(() => {
           </button>
           专家点评
         </label>
+        <label class="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700 hover:text-slate-900 transition-colors" @click.prevent="showPolish = !showPolish">
+          <button
+            type="button"
+            role="switch"
+            :aria-checked="showPolish"
+            :class="showPolish ? 'bg-slate-900' : 'bg-slate-200'"
+            class="relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+          >
+            <span
+              aria-hidden="true"
+              :class="showPolish ? 'translate-x-3' : 'translate-x-0'"
+              class="pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+            />
+          </button>
+          斧正回复
+        </label>
         <label class="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700 hover:text-slate-900 transition-colors" @click.prevent="showReference = !showReference">
           <button
             type="button"
@@ -355,18 +389,18 @@ onBeforeUnmount(() => {
           </div>
           
           <!-- 专家点评与参考答案气泡 -->
-          <div v-if="(showCritique && message.critique) || (showReference && message.reference)" class="mt-2 max-w-[85%] space-y-2">
+          <div v-if="(showCritique && message.critique) || (showPolish && message.polish) || (showReference && message.reference)" class="mt-2 max-w-[85%] space-y-2">
             <div v-if="showCritique && message.critique" class="rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-3 text-sm text-blue-900">
               <span class="font-semibold text-blue-700">专家点评：</span>{{ message.critique }}
+            </div>
+            <div v-if="showPolish && message.polish" class="rounded-xl border border-amber-100 bg-amber-50/60 px-4 py-3 text-sm text-amber-900">
+              <span class="font-semibold text-amber-700">斧正回复：</span>{{ message.polish }}
             </div>
             <div v-if="showReference && message.reference" class="rounded-xl border border-emerald-100 bg-emerald-50/50 px-4 py-3 text-sm text-emerald-900">
               <span class="font-semibold text-emerald-700">参考答案：</span>{{ message.reference }}
             </div>
           </div>
-          <p
-            v-else-if="message.role === 'customer' && (showCritique || showReference)"
-            class="mt-2 text-xs text-slate-400 pl-2"
-          >
+          <p v-else-if="message.role === 'customer' && (showCritique || showPolish || showReference)" class="mt-2 text-xs text-slate-400 pl-2">
             评估生成中...
           </p>
         </div>
