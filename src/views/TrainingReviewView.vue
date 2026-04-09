@@ -25,6 +25,7 @@ const sessionId = computed(() => String(route.params.id || ""));
 const score = ref<number | null>(null);
 const finishedAt = ref<string | null>(null);
 const duration = ref<number | null>(null);
+const preview = ref<string | null>(null);
 const promptsNotes = ref<string[]>([]);
 const usedPromptIds = ref<number[]>([]);
 const username = ref<string | null>(null);
@@ -50,6 +51,7 @@ async function loadDetail() {
       isAdmin.value = normalized.includes("admin") || normalized.includes("root") || normalized.includes("manager");
     }
     score.value = result.score ?? null;
+    preview.value = result.preview ?? null;
     finishedAt.value = result.finished_at ?? null;
     duration.value = result.duration ?? null;
     promptsNotes.value = result.prompts_notes ?? [];
@@ -109,6 +111,9 @@ onMounted(() => {
         </div>
       </CardContent>
       <CardContent class="pt-0 space-y-2">
+        <div v-if="preview" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 whitespace-pre-wrap">
+          前情回顾：{{ preview }}
+        </div>
         <div v-if="promptsNotes.length" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
           提示词备注：{{ promptsNotes.join(" / ") }}
         </div>

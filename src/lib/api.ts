@@ -222,6 +222,7 @@ export async function getSessionDetail(sessionId: string) {
   return requestJson<{
     id: string;
     score?: number;
+    preview?: string;
     dialogue_log: Array<{
       round: number;
       user_msg: string;

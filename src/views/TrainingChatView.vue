@@ -240,10 +240,6 @@ async function handleTerminate() {
   }
 }
 
-function handleBack() {
-  router.push("/training/select");
-}
-
 onMounted(() => {
   if (!sessionId.value) {
     errorMessage.value = "缺少会话编号。";

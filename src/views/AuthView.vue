@@ -6,7 +6,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -183,11 +182,11 @@ function switchView(nextView: "login" | "register") {
                     :type="showPassword ? 'text' : 'password'"
                     autocomplete="current-password"
                     placeholder="请输入密码"
-                    class="pr-12"
+                    class="pr-12 hide-native-password-toggle"
                   />
                   <button
                     type="button"
-                    class="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-2 text-slate-500 hover:text-slate-700"
+                    class="absolute right-1.5 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-slate-500 hover:text-slate-700"
                     @click="showPassword = !showPassword"
                     :aria-label="showPassword ? '隐藏密码' : '显示密码'"
                   >
@@ -258,3 +257,10 @@ function switchView(nextView: "login" | "register") {
     </div>
   </div>
 </template>
+
+<style>
+.hide-native-password-toggle::-ms-reveal,
+.hide-native-password-toggle::-ms-clear {
+  display: none;
+}
+</style>

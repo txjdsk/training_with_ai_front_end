@@ -11,7 +11,14 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { createSession, getPrompts, getPromptTypes } from "@/lib/api";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { createSession, getPrompts, getPromptTypes, getPromptDetail } from "@/lib/api";
 
 type PromptItem = { id: number; note: string; type: number };
 type PromptTypeItem = { id: number; name: string };
@@ -37,6 +44,11 @@ const isCreating = ref(false);
 const errorMessage = ref("");
 const sessionId = ref("");
 const router = useRouter();
+
+const isContentDialogOpen = ref(false);
+const currentPromptContent = ref("");
+const currentPromptTitle = ref("");
+const isContentLoading = ref(false);
 
 const difficultyOptions = [
   { label: "低", value: "low" },
@@ -221,6 +233,21 @@ async function handleCreateSession() {
   }
 }
 
+async function handleViewContent(id: number, typeName: string, note: string) {
+  currentPromptTitle.value = `${typeName} - ${note || '未命名'}`;
+  currentPromptContent.value = "";
+  isContentDialogOpen.value = true;
+  isContentLoading.value = true;
+  try {
+    const detail = await getPromptDetail(id);
+    currentPromptContent.value = detail.content || '暂无内容';
+  } catch (error) {
+    currentPromptContent.value = error instanceof Error ? error.message : "内容加载失败";
+  } finally {
+    isContentLoading.value = false;
+  }
+}
+
 onMounted(() => {
   loadPromptTypes();
   loadRoles();
@@ -299,6 +326,7 @@ onMounted(() => {
                     </Button>
                   </TableHead>
                   <TableHead class="border-r px-4 font-semibold text-slate-700">角色名称 / 备注</TableHead>
+                  <TableHead class="w-[80px] border-r px-4 text-center font-semibold text-slate-700">内容</TableHead>
                   <TableHead class="w-[120px] px-6 text-center font-semibold text-slate-700">操作</TableHead>
                 </TableRow>
               </TableHeader>
@@ -315,6 +343,16 @@ onMounted(() => {
                 >
                   <TableCell class="border-r px-4 text-center font-medium text-slate-900">{{ role.id }}</TableCell>
                   <TableCell class="border-r px-4 text-slate-700">{{ role.note || "未命名角色" }}</TableCell>
+                  <TableCell class="border-r px-4 text-center">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      class="h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" 
+                      @click.stop="handleViewContent(role.id, '角色', role.note)"
+                    >
+                      预览
+                    </Button>
+                  </TableCell>
                   <TableCell class="px-6 text-center">
                     <Button
                       size="sm"
@@ -326,7 +364,7 @@ onMounted(() => {
                   </TableCell>
                 </TableRow>
                 <TableRow v-if="!sortedRoleOptions.length && !isLoadingRoles">
-                  <TableCell colspan="3" class="h-24 text-center text-slate-500">
+                  <TableCell colspan="4" class="h-24 text-center text-slate-500">
                     暂无角色数据
                   </TableCell>
                 </TableRow>
@@ -368,6 +406,7 @@ onMounted(() => {
                   </TableHead>
                   <TableHead class="w-[180px] border-r px-4 font-semibold text-slate-700">分类名称</TableHead>
                   <TableHead class="border-r px-4 font-semibold text-slate-700">场景名称 / 备注</TableHead>
+                  <TableHead class="w-[80px] border-r px-4 text-center font-semibold text-slate-700">内容</TableHead>
                   <TableHead class="w-[120px] px-6 text-center font-semibold text-slate-700">操作</TableHead>
                 </TableRow>
               </TableHeader>
@@ -386,6 +425,16 @@ onMounted(() => {
                   <TableCell class="border-r px-4 text-center text-slate-700">{{ scene.type }}</TableCell>
                   <TableCell class="border-r px-4 text-slate-700">{{ promptTypeNameMap.get(scene.type) || '未配置分类名' }}</TableCell>
                   <TableCell class="border-r px-4 text-slate-700">{{ scene.note || "未命名场景" }}</TableCell>
+                  <TableCell class="border-r px-4 text-center">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      class="h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" 
+                      @click.stop="handleViewContent(scene.id, '场景', scene.note)"
+                    >
+                      预览
+                    </Button>
+                  </TableCell>
                   <TableCell class="px-6 text-center">
                     <Button
                       size="sm"
@@ -397,7 +446,7 @@ onMounted(() => {
                   </TableCell>
                 </TableRow>
                 <TableRow v-if="!sortedSceneOptions.length && !isLoadingScenes">
-                  <TableCell colspan="5" class="h-24 text-center text-slate-500">
+                  <TableCell colspan="6" class="h-24 text-center text-slate-500">
                     暂无场景数据
                   </TableCell>
                 </TableRow>
@@ -482,5 +531,25 @@ onMounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- 提示词内容预览弹窗 -->
+    <Dialog :open="isContentDialogOpen" @update:open="isContentDialogOpen = $event">
+      <DialogContent class="sm:max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle>{{ currentPromptTitle }}</DialogTitle>
+          <DialogDescription>
+            提示词详细内容
+          </DialogDescription>
+        </DialogHeader>
+        <div class="flex-1 overflow-y-auto pr-2 mt-2">
+          <div v-if="isContentLoading" class="flex justify-center p-8 text-slate-500">
+            加载中...
+          </div>
+          <div v-else class="whitespace-pre-wrap text-sm text-slate-700 font-mono bg-slate-50 p-4 rounded-md border">
+            {{ currentPromptContent }}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
