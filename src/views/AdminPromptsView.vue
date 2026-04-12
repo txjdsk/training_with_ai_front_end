@@ -418,7 +418,7 @@ onMounted(() => {
             </div>
             <div class="space-y-2">
               <Label>备注</Label>
-              <Input v-model="detail.note" placeholder="提示词备注" />
+              <Input v-model="detail.note" placeholder="提示词名称与备注" />
             </div>
             <div class="space-y-2">
               <Label>内容</Label>
@@ -497,11 +497,29 @@ onMounted(() => {
           <div class="space-y-4">
             <div v-if="selectedSection === 7" class="space-y-2">
               <Label>分类 ID</Label>
-              <Input v-model="categoryIdInput" type="number" placeholder="例如 7" />
+              <div class="flex flex-wrap items-center gap-3">
+                <select
+                  v-model="detail.categoryId"
+                  class="flex h-10 w-full flex-1 items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-900/30 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option :value="0" disabled>-- 请选择已知场景或在右侧直接输入 --</option>
+                  <option
+                    v-for="pt in promptTypes.filter((t) => t.id >= 7)"
+                    :key="pt.id"
+                    :value="pt.id"
+                  >
+                    {{ pt.name }} (ID: {{ pt.id }})
+                  </option>
+                </select>
+                <div class="flex shrink-0 items-center gap-2">
+                  <span class="text-sm font-medium text-slate-500">直接输入ID:</span>
+                  <Input v-model="categoryIdInput" type="number" class="w-24" placeholder="例如 7" />
+                </div>
+              </div>
             </div>
             <div class="space-y-2">
               <Label>备注</Label>
-              <Input v-model="detail.note" placeholder="提示词备注" />
+              <Input v-model="detail.note" placeholder="提示词名称与备注" />
             </div>
             <div class="space-y-2">
               <Label>内容</Label>

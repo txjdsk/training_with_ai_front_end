@@ -15,7 +15,7 @@ export default defineConfig({
     server: {
         // --- 解决局域网访问 (手机测试) ---
         // 设置为 '0.0.0.0' 或 true，允许局域网 IP 访问
-        host: "0.0.0.0",
+        host: true,
 
         // 端口
         port: 5173,

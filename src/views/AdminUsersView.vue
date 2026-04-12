@@ -40,17 +40,12 @@ const form = reactive({
 
 const isEditing = computed(() => editingUserId.value !== null);
 
-const sortKey = ref<"id" | "created_at" | "role" | null>(null);
+const sortKey = ref<"id" | "created_at" | "role" | "username" | null>(null);
 const sortDesc = ref(false);
 
-function handleSort(key: "id" | "created_at" | "role") {
+function handleSort(key: "id" | "created_at" | "role" | "username") {
   if (sortKey.value === key) {
-    if (sortDesc.value) {
-      sortKey.value = null; // 恢复默认
-      sortDesc.value = false;
-    } else {
-      sortDesc.value = true; // 降序
-    }
+    sortDesc.value = !sortDesc.value; // 反转顺序即可，不再取消排序
   } else {
     sortKey.value = key;
     sortDesc.value = false; // 升序
@@ -70,6 +65,8 @@ const displayedUsers = computed(() => {
         const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
         const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
         return (timeA - timeB) * order;
+      } else if (sortKey.value === "username") {
+        return a.username.localeCompare(b.username) * order;
       }
       return 0;
     });
@@ -278,7 +275,12 @@ onMounted(() => {
                 >
                   ID <span class="text-xs text-slate-400 inline-block w-3">{{ sortKey === 'id' ? (sortDesc ? '↓' : '↑') : '' }}</span>
                 </TableHead>
-                <TableHead class="border-r px-6 font-semibold text-slate-700">用户名</TableHead>
+                <TableHead
+                  class="border-r px-6 font-semibold text-slate-700 cursor-pointer select-none hover:bg-slate-200/50 transition-colors"
+                  @click="handleSort('username')"
+                >
+                  用户名 <span class="text-xs text-slate-400 inline-block w-3">{{ sortKey === 'username' ? (sortDesc ? '↓' : '↑') : '' }}</span>
+                </TableHead>
                 <TableHead
                   class="border-r px-6 font-semibold text-slate-700 text-center w-[160px] cursor-pointer select-none hover:bg-slate-200/50 transition-colors"
                   @click="handleSort('role')"

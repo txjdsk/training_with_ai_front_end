@@ -63,6 +63,7 @@ const messageContainer = ref<HTMLElement | null>(null);
 const showCritique = ref(false);
 const showPolish = ref(false);
 const showReference = ref(false);
+const isTtsEnabled = ref(false);
 
 const canSend = computed(() => !!inputText.value.trim() && !isSending.value);
 
@@ -79,6 +80,15 @@ function pushMessage(role: ChatMessage["role"], content: string, detail?: Partia
     reference: detail?.reference,
   });
   scrollToBottom();
+}
+
+function speakText(text: string) {
+  if (!window.speechSynthesis || !isTtsEnabled.value) return;
+  // Stop currently playing audio before starting new one
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "zh-CN";
+  window.speechSynthesis.speak(utterance);
 }
 
 function scrollToBottom() {
@@ -116,6 +126,9 @@ function handleReplyEvent(payload: SsePayload) {
     pushMessage("customer", payload.customer_msg, {
       round: payload.round,
     });
+    if (isTtsEnabled.value) {
+      speakText(payload.customer_msg);
+    }
   }
 }
 
@@ -264,6 +277,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   sseClient?.close();
+  window.speechSynthesis?.cancel(); // cleanup tts
 });
 </script>
 
@@ -316,6 +330,23 @@ onBeforeUnmount(() => {
     <main class="flex flex-1 flex-col min-w-0 bg-white relative">
       <!-- 顶栏开关 -->
       <header class="flex h-14 shrink-0 items-center justify-end gap-5 border-b border-slate-100 bg-white/80 px-6 backdrop-blur-sm z-10">
+        <label class="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700 hover:text-slate-900 transition-colors" @click.prevent="isTtsEnabled = !isTtsEnabled">
+          <button
+            type="button"
+            role="switch"
+            :aria-checked="isTtsEnabled"
+            :class="isTtsEnabled ? 'bg-slate-900' : 'bg-slate-200'"
+            class="relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+          >
+            <span
+              aria-hidden="true"
+              :class="isTtsEnabled ? 'translate-x-3' : 'translate-x-0'"
+              class="pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+            />
+          </button>
+          语音播报
+        </label>
+        <div class="h-4 w-px bg-slate-300 mx-1"></div>
         <label class="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700 hover:text-slate-900 transition-colors" @click.prevent="showCritique = !showCritique">
           <button
             type="button"
