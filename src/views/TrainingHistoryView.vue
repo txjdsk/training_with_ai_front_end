@@ -40,12 +40,7 @@ const sortDesc = ref(false);
 
 function handleSort(key: "score" | "finished_at" | "duration") {
   if (sortKey.value === key) {
-    if (sortDesc.value) {
-      sortKey.value = null; // 恢复默认
-      sortDesc.value = false;
-    } else {
-      sortDesc.value = true; // 降序
-    }
+    sortDesc.value = !sortDesc.value; // 反转顺序即可，不再取消排序
   } else {
     sortKey.value = key;
     sortDesc.value = false; // 升序
