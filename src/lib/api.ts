@@ -73,6 +73,14 @@ export async function getProfile() {
   });
 }
 
+export async function updateProfile(data: { username?: string; old_password?: string; new_password?: string }) {
+  return requestJson<{ id: number; username: string; role: string; created_at: string }>({
+    method: "PUT",
+    url: "/users/profile",
+    data,
+  });
+}
+
 export async function getPrompts(params: { type?: number; search?: string }) {
   return requestJson<Array<{ id: number; note: string; type: number }>>({
     method: "GET",

@@ -207,7 +207,8 @@ async function loadScenes() {
   isLoadingScenes.value = true;
   errorMessage.value = "";
   try {
-    sceneOptions.value = await getPrompts({ type: 7, search: sceneSearch.value.trim() || undefined });
+    const list = await getPrompts({ search: sceneSearch.value.trim() || undefined });
+    sceneOptions.value = list.filter((item) => item.type >= 7);
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "场景列表加载失败。";
   } finally {

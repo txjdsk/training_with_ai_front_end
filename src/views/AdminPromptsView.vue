@@ -29,6 +29,7 @@ type PromptDetail = {
 const search = ref("");
 const isLoading = ref(false);
 const errorMessage = ref("");
+const sheetErrorMessage = ref("");
 const prompts = ref<PromptListItem[]>([]);
 const promptTypes = ref<PromptTypeItem[]>([]);
 const selectedSection = ref<number>(6);
@@ -162,6 +163,7 @@ async function loadPromptTypes() {
 async function selectPrompt(id: number) {
   selectedPromptId.value = id;
   errorMessage.value = "";
+  sheetErrorMessage.value = "";
   isDiffMode.value = false;
   try {
     const data = await getPromptDetail(id);
@@ -185,6 +187,8 @@ async function selectPrompt(id: number) {
 function handleSectionChange(sectionId: number) {
   selectedSection.value = sectionId;
   selectedPromptId.value = null;
+  errorMessage.value = "";
+  sheetErrorMessage.value = "";
   isSheetOpen.value = false;
   sceneFilterTypeId.value = null;
   sceneTypeNameSearch.value = "";
@@ -207,6 +211,8 @@ function toggleCategoryIdSort() {
 
 function startCreate() {
   selectedPromptId.value = null;
+  errorMessage.value = "";
+  sheetErrorMessage.value = "";
   resetDetail();
   if (!isFixedSection.value) {
     isSheetOpen.value = true;
@@ -214,12 +220,13 @@ function startCreate() {
 }
 
 async function handleSave() {
+  const targetError = isFixedSection.value ? errorMessage : sheetErrorMessage;
   if (!detail.value.note.trim() || !detail.value.content.trim()) {
-    errorMessage.value = "请填写提示词备注与内容。";
+    targetError.value = "请填写提示词备注与内容。";
     return;
   }
   isSaving.value = true;
-  errorMessage.value = "";
+  targetError.value = "";
   try {
     if (detail.value.id) {
       await updatePrompt(detail.value.id, {
@@ -241,13 +248,18 @@ async function handleSave() {
     await loadPrompts();
     isSheetOpen.value = false;
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : "保存失败。";
+    if (isFixedSection.value) {
+      errorMessage.value = error instanceof Error ? error.message : "保存失败。";
+    } else {
+      sheetErrorMessage.value = error instanceof Error ? error.message : "保存失败。";
+    }
   } finally {
     isSaving.value = false;
   }
 }
 
 async function handleDelete() {
+  const targetError = isFixedSection.value ? errorMessage : sheetErrorMessage;
   if (!detail.value.id) {
     return;
   }
@@ -255,7 +267,7 @@ async function handleDelete() {
     return;
   }
   isDeleting.value = true;
-  errorMessage.value = "";
+  targetError.value = "";
   try {
     await deletePrompt(detail.value.id);
     selectedPromptId.value = null;
@@ -263,28 +275,37 @@ async function handleDelete() {
     await loadPrompts();
     isSheetOpen.value = false;
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : "删除失败。";
+    if (isFixedSection.value) {
+      errorMessage.value = error instanceof Error ? error.message : "删除失败。";
+    } else {
+      sheetErrorMessage.value = error instanceof Error ? error.message : "删除失败。";
+    }
   } finally {
     isDeleting.value = false;
   }
 }
 
 async function handleOptimize() {
+  const targetError = isFixedSection.value ? errorMessage : sheetErrorMessage;
   if (!detail.value.id) {
     return;
   }
   if (!requirement.value.trim()) {
-    errorMessage.value = "请输入优化诉求。";
+    targetError.value = "请输入优化诉求。";
     return;
   }
   isOptimizing.value = true;
-  errorMessage.value = "";
+  targetError.value = "";
   try {
     const result = await optimizePrompt(detail.value.id, requirement.value.trim());
     detail.value.content = result.optimized_content;
     isDiffMode.value = true;
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : "优化失败。";
+    if (isFixedSection.value) {
+      errorMessage.value = error instanceof Error ? error.message : "优化失败。";
+    } else {
+      sheetErrorMessage.value = error instanceof Error ? error.message : "优化失败。";
+    }
   } finally {
     isOptimizing.value = false;
   }
@@ -492,6 +513,10 @@ onMounted(() => {
           <SheetTitle>{{ isEditing ? "修改现有提示词" : "新增当前模块提示词" }}</SheetTitle>
           <SheetDescription>在表单中完成提示词设定并保存。</SheetDescription>
         </SheetHeader>
+
+        <p v-if="sheetErrorMessage" class="mb-6 rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {{ sheetErrorMessage }}
+        </p>
         
         <div class="space-y-6">
           <div class="space-y-4">
